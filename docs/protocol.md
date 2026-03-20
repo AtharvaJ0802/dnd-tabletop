@@ -39,7 +39,6 @@ WebSocket connection.
 - `JOIN`
 - `CHAT`
 - `ROLL_DICE`
-- `MOVE_TOKEN`
 - `SET_HP`
 
 ### Server -> Client
@@ -85,20 +84,6 @@ WebSocket connection.
   }
 }
 ```
-### MOVE_TOKEN
-```json
-{
-  "type": "command",
-  "client_id": "player-123",
-  "event_id": "uuid",
-  "command": "MOVE_TOKEN",
-  "payload": {
-    "token_id": "token-1",
-    "x": 3,
-    "y": 5
-  }
-}
-```
 ### SET_HP
 ```json
 {
@@ -141,22 +126,6 @@ WebSocket connection.
     "result": 17
   }
 }
-```
-
-### MOVE_TOKEN
-```json
-{
-  "type": "event",
-  "seq": 7,
-  "event_id": "uuid",
-  "event_type": "MOVE_TOKEN",
-  "payload": {
-    "token_id": "token-1",
-    "x": 3,
-    "y": 5
-  }
-}
-
 ```
 
 ### SET_HP

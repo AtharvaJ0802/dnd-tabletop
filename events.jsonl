@@ -1,0 +1,24 @@
+{"type": "event", "seq": 1, "event_id": "78453ac2-b976-411f-8fbf-396fa370ad38", "event_type": "JOIN", "payload": {"client_id": "player-123", "name": "Alice"}}
+{"type": "event", "seq": 2, "event_id": "b6e56ca5-fc63-49fd-8004-7269bb9e8fed", "event_type": "JOIN", "payload": {"client_id": "player-456", "name": "Bob"}}
+{"type": "event", "seq": 3, "event_id": "85963ad1-ab18-4652-a911-2c6d2056609c", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "hello"}}
+{"type": "event", "seq": 4, "event_id": "4df8eefc-ee04-4837-9a14-7af6d06b4872", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 20, "result": 19}}
+{"type": "event", "seq": 5, "event_id": "8697c65b-7dcb-4008-9967-f90bffc8a531", "event_type": "SET_HP", "payload": {"target_id": "player-123", "delta": -5, "new_hp": 15}}
+{"type": "event", "seq": 6, "event_id": "49aa9ef1-f590-481e-b357-2ac40b587c5f", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "testing ordering"}}
+{"type": "event", "seq": 7, "event_id": "44ca0f3e-e796-46e8-bd40-312100027487", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 6, "result": 5}}
+{"type": "event", "seq": 8, "event_id": "cb5d33d4-9440-42f7-8963-eda1aa1f26c2", "event_type": "CHAT", "payload": {"client_id": "player-456", "text": "done"}}
+{"type": "event", "seq": 9, "event_id": "e0d6124f-c586-4c2d-98d1-15855e153adb", "event_type": "JOIN", "payload": {"client_id": "player-123", "name": "Alice"}}
+{"type": "event", "seq": 10, "event_id": "459d76fc-9fcc-4dac-90fe-65ac5780373a", "event_type": "JOIN", "payload": {"client_id": "player-456", "name": "Bob"}}
+{"type": "event", "seq": 11, "event_id": "80773033-94a8-46ec-8308-1f80d2aa746f", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "hello"}}
+{"type": "event", "seq": 12, "event_id": "b77058e2-130c-42ac-ade7-ad0c7c8e3c94", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 20, "result": 19}}
+{"type": "event", "seq": 13, "event_id": "4925a4d4-8c81-4b44-9b0c-8b191ef35345", "event_type": "SET_HP", "payload": {"target_id": "player-123", "delta": -5, "new_hp": 10}}
+{"type": "event", "seq": 14, "event_id": "9fd8f747-bef4-4f5e-9b52-7a542e477a6a", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "testing ordering"}}
+{"type": "event", "seq": 15, "event_id": "bac6b8d8-236b-47bd-bae0-c1f19473c833", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 6, "result": 1}}
+{"type": "event", "seq": 16, "event_id": "85c41ca4-1f02-4d91-9912-68d232a1a131", "event_type": "CHAT", "payload": {"client_id": "player-456", "text": "done"}}
+{"type": "event", "seq": 17, "event_id": "96d5065c-648e-4bf4-87c1-af966f9b9ecc", "event_type": "JOIN", "payload": {"client_id": "player-123", "name": "Alice"}}
+{"type": "event", "seq": 18, "event_id": "c95df040-e225-467b-89f9-460d6aab765d", "event_type": "JOIN", "payload": {"client_id": "player-456", "name": "Bob"}}
+{"type": "event", "seq": 19, "event_id": "89e994cb-2ab5-4147-b5db-d9c50f12eca4", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "hello"}}
+{"type": "event", "seq": 20, "event_id": "0a027133-ea27-46a8-9aa4-687128b35479", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 20, "result": 10}}
+{"type": "event", "seq": 21, "event_id": "92731517-3828-4190-a291-97a65ec9ea17", "event_type": "SET_HP", "payload": {"target_id": "player-123", "delta": -5, "new_hp": 5}}
+{"type": "event", "seq": 22, "event_id": "62613d95-bea3-4c31-8984-0aa85d55d1d7", "event_type": "CHAT", "payload": {"client_id": "player-123", "text": "testing ordering"}}
+{"type": "event", "seq": 23, "event_id": "36e2090b-ecad-4fbe-a699-5e6bf2c5969b", "event_type": "ROLL_DICE", "payload": {"client_id": "player-456", "sides": 6, "result": 4}}
+{"type": "event", "seq": 24, "event_id": "c1ae1866-b622-4abc-ab6d-f140c169339c", "event_type": "CHAT", "payload": {"client_id": "player-456", "text": "done"}}

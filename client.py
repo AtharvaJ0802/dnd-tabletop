@@ -62,7 +62,6 @@ async def user_input_loop(ws, client_id: str, state: ClientState) -> None:
     print("  /join <name>")
     print("  /chat <text>")
     print("  /roll <sides>        (e.g., /roll 20)")
-    print("  /move <token> <x> <y>")
     print("  /hp <target_id> <delta>  (e.g., /hp player-123 -5)")
     print("  /quit")
     print()
@@ -101,21 +100,6 @@ async def user_input_loop(ws, client_id: str, state: ClientState) -> None:
             await send_cmd(ws, client_id, "ROLL_DICE", {"sides": sides})
             continue
 
-        if line.startswith("/move "):
-            parts = line.split()
-            if len(parts) != 4:
-                print("Usage: /move <token_id> <x> <y>")
-                continue
-            token_id = parts[1]
-            try:
-                x = int(parts[2])
-                y = int(parts[3])
-            except ValueError:
-                print("x and y must be integers")
-                continue
-            await send_cmd(ws, client_id, "MOVE_TOKEN", {"token_id": token_id, "x": x, "y": y})
-            continue
-
         if line.startswith("/hp "):
             parts = line.split()
             if len(parts) != 3 and len(parts) != 4:
@@ -136,7 +120,7 @@ async def user_input_loop(ws, client_id: str, state: ClientState) -> None:
             await send_cmd(ws, client_id, "SET_HP", {"target_id": target_id, "delta": delta})
             continue
 
-        print("Unknown command. Try /join, /chat, /roll, /move, /hp, /quit")
+        print("Unknown command. Try /join, /chat, /roll, /hp, /quit")
 
 
 async def main() -> None:

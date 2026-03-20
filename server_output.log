@@ -1,0 +1,19 @@
+Replaying event log from events.jsonl...
+Replayed 16 events. Current seq=16
+Server starting on ws://0.0.0.0:8765
+17 Processing command from player-123: JOIN with payload {'name': 'Alice'}
+Emitting event: seq=17, type=JOIN, event_id=96d5065c-648e-4bf4-87c1-af966f9b9ecc
+18 Processing command from player-456: JOIN with payload {'name': 'Bob'}
+Emitting event: seq=18, type=JOIN, event_id=c95df040-e225-467b-89f9-460d6aab765d
+19 Processing command from player-123: CHAT with payload {'text': 'hello'}
+Emitting event: seq=19, type=CHAT, event_id=89e994cb-2ab5-4147-b5db-d9c50f12eca4
+20 Processing command from player-456: ROLL_DICE with payload {'sides': 20}
+Emitting event: seq=20, type=ROLL_DICE, event_id=0a027133-ea27-46a8-9aa4-687128b35479
+21 Processing command from player-456: SET_HP with payload {'target_id': 'player-123', 'delta': -5}
+Emitting event: seq=21, type=SET_HP, event_id=92731517-3828-4190-a291-97a65ec9ea17
+22 Processing command from player-123: CHAT with payload {'text': 'testing ordering'}
+Emitting event: seq=22, type=CHAT, event_id=62613d95-bea3-4c31-8984-0aa85d55d1d7
+23 Processing command from player-456: ROLL_DICE with payload {'sides': 6}
+Emitting event: seq=23, type=ROLL_DICE, event_id=36e2090b-ecad-4fbe-a699-5e6bf2c5969b
+24 Processing command from player-456: CHAT with payload {'text': 'done'}
+Emitting event: seq=24, type=CHAT, event_id=c1ae1866-b622-4abc-ab6d-f140c169339c

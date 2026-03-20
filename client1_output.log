@@ -1,0 +1,16 @@
+Connecting to ws://localhost:8765 as player-123 ...
+Commands:
+  /join <name>
+  /chat <text>
+  /roll <sides>        (e.g., /roll 20)
+  /hp <target_id> <delta>  (e.g., /hp player-123 -5)
+  /quit
+
+[seq=17] JOIN {'client_id': 'player-123', 'name': 'Alice'}
+[seq=18] JOIN {'client_id': 'player-456', 'name': 'Bob'}
+[seq=19] CHAT {'client_id': 'player-123', 'text': 'hello'}
+[seq=20] ROLL_DICE {'client_id': 'player-456', 'sides': 20, 'result': 10}
+[seq=21] SET_HP {'target_id': 'player-123', 'delta': -5, 'new_hp': 5}
+[seq=22] CHAT {'client_id': 'player-123', 'text': 'testing ordering'}
+[seq=23] ROLL_DICE {'client_id': 'player-456', 'sides': 6, 'result': 4}
+[seq=24] CHAT {'client_id': 'player-456', 'text': 'done'}
