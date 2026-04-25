@@ -1,0 +1,2 @@
+pysyncobj==0.3.15
+websockets==16.0
