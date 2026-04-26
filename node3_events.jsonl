@@ -1,0 +1,3 @@
+{"type": "event", "event_id": "7b57db2d-d08d-4004-9c5a-77b561499cb3", "event_type": "CHAT", "payload": {"client_id": "player-rohit", "text": "hello"}, "seq": 1}
+{"type": "event", "event_id": "f9c42077-d15f-4f4f-8f37-aae23ef622c1", "event_type": "CHAT", "payload": {"client_id": "player-rohit", "text": "hello"}, "seq": 2}
+{"type": "event", "event_id": "4149f592-7dc8-4671-888c-534b75e092cc", "event_type": "ROLL_DICE", "payload": {"client_id": "player-rohit", "sides": 20, "result": 2}, "seq": 3}

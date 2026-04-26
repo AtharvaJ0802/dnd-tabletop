@@ -25,8 +25,6 @@ class GameState:
 
 class TabletopServer(SyncObj):
     def __init__(self, self_addr: str, partner_addrs: List[str], journal_file: str, audit_log_path: Path) -> None:
-        conf = SyncObjConf( journalFile=journal_file, dynamicMembershipChange=True)
-        super().__init__(self_addr, partner_addrs, conf)
 
         self.self_addr = self_addr
         self.clients: Dict[str, "websockets.WebSocketServerProtocol"] = {}
@@ -35,12 +33,21 @@ class TabletopServer(SyncObj):
         self.dedup: Dict[str, int] = {}
         self.event_history: list[Dict[str, Any]] = []
         self.audit_log_path = audit_log_path
+        self._max_logged_seq = self._compute_max_logged_seq()
+
+        conf = SyncObjConf( journalFile=journal_file, dynamicMembershipChange=True)
+        super().__init__(self_addr, partner_addrs, conf)
         print(f"[startup] TabletopServer __init__ done. self_addr={self.self_addr} audit_log={self.audit_log_path.resolve()}", flush=True)
 
     def append_event_to_log(self, event: Dict[str, Any]) -> None:
+        seq = event.get("seq", 0)
+        # During replay, suppress events that are already in the audit log from a previous lifetime of this node.
+        if isinstance(seq, int) and seq <= self._max_logged_seq:
+            print(f"[audit] skip seq={seq} (already logged)", flush=True)
+            return
         try:
             print(
-                f"[audit] writing seq={event.get('seq')} to {self.audit_log_path.resolve()}",
+                f"[audit] writing seq={seq} to {self.audit_log_path.resolve()}",
                 flush=True,
             )
             with self.audit_log_path.open("a", encoding="utf-8") as f:
@@ -48,6 +55,26 @@ class TabletopServer(SyncObj):
         except Exception as e:
             print(f"[audit] FAILED: {type(e).__name__}: {e}", flush=True)
             raise
+
+    def _compute_max_logged_seq(self) -> int:
+        """Scan the existing audit log on startup and return the highest seq
+        already written. Used to suppress duplicate writes during journal replay."""
+        if not self.audit_log_path.exists():
+            return 0
+        max_seq = 0
+        try:
+            with self.audit_log_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        event = json.loads(line)
+                        seq = event.get("seq", 0)
+                        if isinstance(seq, int):
+                            max_seq = max(max_seq, seq)
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+        return max_seq
 
     def apply_event(self, event: Dict[str, Any]) -> None:
         event_type = event.get("event_type")
