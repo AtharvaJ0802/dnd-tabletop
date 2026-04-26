@@ -1,14 +1,14 @@
+import argparse
 import asyncio
 import json
 import random
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import websockets
-
-
-LOG_FILE = Path("events.jsonl")
+from pysyncobj import SyncObj, SyncObjConf, replicated
 
 
 @dataclass
@@ -23,47 +23,31 @@ class GameState:
     players: Dict[str, Player] = field(default_factory=dict)
 
 
-class TabletopServer:
-    def __init__(self) -> None:
-        self.clients: Dict[str, websockets.WebSocketServerProtocol] = {}
+class TabletopServer(SyncObj):
+    def __init__(self, self_addr: str, partner_addrs: List[str], journal_file: str, audit_log_path: Path) -> None:
+        conf = SyncObjConf( journalFile=journal_file, dynamicMembershipChange=True)
+        super().__init__(self_addr, partner_addrs, conf)
+
+        self.self_addr = self_addr
+        self.clients: Dict[str, "websockets.WebSocketServerProtocol"] = {}
         self.seq: int = 0
         self.state = GameState()
         self.dedup: Dict[str, int] = {}
-        self._shutdown = asyncio.Event()
         self.event_history: list[Dict[str, Any]] = []
-
-        self.load_and_replay_log()
-
-    def next_seq(self) -> int:
-        self.seq += 1
-        return self.seq
-
-    def load_and_replay_log(self) -> None:
-        if not LOG_FILE.exists():
-            print("No existing event log found. Starting fresh.", flush=True)
-            return
-
-        print(f"Replaying event log from {LOG_FILE}...", flush=True)
-        replayed = 0
-
-        with LOG_FILE.open("r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                event = json.loads(line)
-                self.apply_event(event)
-                self.seq = max(self.seq, event["seq"])
-                replayed += 1
-
-        self.event_history.append(event)
-
-        print(f"Replayed {replayed} events. Current seq={self.seq}", flush=True)
+        self.audit_log_path = audit_log_path
+        print(f"[startup] TabletopServer __init__ done. self_addr={self.self_addr} audit_log={self.audit_log_path.resolve()}", flush=True)
 
     def append_event_to_log(self, event: Dict[str, Any]) -> None:
-        with LOG_FILE.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(event) + "\n")
+        try:
+            print(
+                f"[audit] writing seq={event.get('seq')} to {self.audit_log_path.resolve()}",
+                flush=True,
+            )
+            with self.audit_log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(event) + "\n")
+        except Exception as e:
+            print(f"[audit] FAILED: {type(e).__name__}: {e}", flush=True)
+            raise
 
     def apply_event(self, event: Dict[str, Any]) -> None:
         event_type = event.get("event_type")
@@ -96,6 +80,37 @@ class TabletopServer:
 
         else:
             print(f"Warning: unknown event_type during replay: {event_type}", flush=True)
+
+    @replicated
+    def _commit_event( self, dedup_key: str, event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Only method allowed to touch self.seq, self.dedup, self.state, or self.event_history.
+
+        Returns the fully-stamped event (with seq populated) on success,
+        or None if this command was a duplicate that should be ignored.
+        """
+        print(f"[commit] enter dedup={dedup_key} type={event.get('event_type')}", flush=True)
+        if dedup_key in self.dedup:
+            return None
+        
+        # SET_HP's new hp depends on state, computed inside @replicated so concurrent SET_HP commands compose correctly.
+        if event["event_type"] == "SET_HP":
+            target_id = event["payload"]["target_id"]
+            delta = event["payload"]["delta"]
+            current_hp = 100
+            if target_id in self.state.players:
+                current_hp = self.state.players[target_id].hp
+            event["payload"]["new_hp"] = max(0, current_hp + delta)
+
+        self.seq += 1
+        event["seq"] = self.seq
+
+        self.apply_event(event)
+        self.append_event_to_log(event)
+        self.dedup[dedup_key] = self.seq
+        self.event_history.append(event)
+
+        return event
 
     async def broadcast(self, msg: Dict[str, Any]) -> None:
         data = json.dumps(msg)
@@ -143,36 +158,32 @@ class TabletopServer:
         command: str = cmd["command"]
         payload: Dict[str, Any] = cmd["payload"]
 
-        dedup_key = f"{client_id}:{event_id}"
-        if dedup_key in self.dedup:
-            print(f"Duplicate command ignored: {dedup_key}", flush=True)
+        # --- Leader check (only the leader may accept commands) ---
+        leader = self._getLeader()
+        if leader is None:
+            await self.send_error_to(
+                client_id, "Cluster initializing; please retry shortly."
+            )
+            return
+        if str(leader) != self.self_addr:
+            await self.send_error_to(
+                client_id, f"Not leader; reconnect to {leader}"
+            )
             return
 
-        seq = self.next_seq()
-
-        print(
-            f"{seq} Processing command from {client_id}: {command} with payload {payload}",
-            flush=True,
-        )
-
+        # --- Per-command validation and any leader-side computation ---
         if command == "JOIN":
             name = payload.get("name")
             if not isinstance(name, str) or not name.strip():
                 await self.send_error_to(
                     client_id, "JOIN requires payload.name as non-empty string."
                 )
-                self.seq -= 1
                 return
-
             event = {
                 "type": "event",
-                "seq": seq,
                 "event_id": event_id,
                 "event_type": "JOIN",
-                "payload": {
-                    "client_id": client_id,
-                    "name": name.strip(),
-                },
+                "payload": {"client_id": client_id, "name": name.strip()},
             }
 
         elif command == "CHAT":
@@ -181,18 +192,12 @@ class TabletopServer:
                 await self.send_error_to(
                     client_id, "CHAT requires payload.text as non-empty string."
                 )
-                self.seq -= 1
                 return
-
             event = {
                 "type": "event",
-                "seq": seq,
                 "event_id": event_id,
                 "event_type": "CHAT",
-                "payload": {
-                    "client_id": client_id,
-                    "text": text,
-                },
+                "payload": {"client_id": client_id, "text": text},
             }
 
         elif command == "ROLL_DICE":
@@ -201,14 +206,11 @@ class TabletopServer:
                 await self.send_error_to(
                     client_id, "ROLL_DICE requires payload.sides as int >= 2."
                 )
-                self.seq -= 1
                 return
-
+            # Roll the dice on the leader; replicas receive the result via Raft.
             result = random.randint(1, sides)
-
             event = {
                 "type": "event",
-                "seq": seq,
                 "event_id": event_id,
                 "event_type": "ROLL_DICE",
                 "payload": {
@@ -221,57 +223,58 @@ class TabletopServer:
         elif command == "SET_HP":
             target_id = payload.get("target_id")
             delta = payload.get("delta")
-
             if not isinstance(target_id, str) or not target_id:
                 await self.send_error_to(
                     client_id,
                     "SET_HP requires payload.target_id as non-empty string.",
                 )
-                self.seq -= 1
                 return
-
             if not isinstance(delta, int):
                 await self.send_error_to(
-                    client_id,
-                    "SET_HP requires payload.delta as integer.",
+                    client_id, "SET_HP requires payload.delta as integer."
                 )
-                self.seq -= 1
                 return
-
-            current_hp = 20
-            if target_id in self.state.players:
-                current_hp = self.state.players[target_id].hp
-
-            new_hp = max(0, current_hp + delta)
-
+            # new_hp is computed inside _commit_event against post-consensus state.
             event = {
                 "type": "event",
-                "seq": seq,
                 "event_id": event_id,
                 "event_type": "SET_HP",
-                "payload": {
-                    "target_id": target_id,
-                    "delta": delta,
-                    "new_hp": new_hp,
-                },
+                "payload": {"target_id": target_id, "delta": delta},
             }
 
         else:
             await self.send_error_to(client_id, f"Unknown command: {command}")
-            self.seq -= 1
             return
 
-        self.apply_event(event)
-        self.append_event_to_log(event)
-        self.dedup[dedup_key] = seq
-        self.event_history.append(event)
-        
+        dedup_key = f"{client_id}:{event_id}"
+
+        # --- Replicate via Raft (blocking; run on executor to keep loop responsive) ---
+        loop = asyncio.get_event_loop()
+        try:
+            committed = await loop.run_in_executor(
+                None,
+                partial(
+                    self._commit_event,
+                    dedup_key,
+                    event,
+                    sync=True,
+                    timeout=5.0,
+                ),
+            )
+        except Exception as e:
+            await self.send_error_to(client_id, f"Replication failed: {e}")
+            return
+
+        if committed is None:
+            print(f"Duplicate command ignored: {dedup_key}", flush=True)
+            return
+
         print(
-            f"Emitting event: seq={seq}, type={event['event_type']}, event_id={event_id}",
+            f"Emitting event: seq={committed['seq']}, "
+            f"type={committed['event_type']}, event_id={event_id}",
             flush=True,
         )
-
-        await self.broadcast(event)
+        await self.broadcast(committed)
 
     async def handler(self, ws: websockets.WebSocketServerProtocol) -> None:
         registered_client_id: Optional[str] = None
@@ -307,9 +310,55 @@ class TabletopServer:
             await asyncio.Future()
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Replicated D&D tabletop server")
+    parser.add_argument(
+        "--ws-host",
+        default="0.0.0.0",
+        help="Host/interface for the WebSocket server (default: 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--ws-port",
+        type=int,
+        default=8765,
+        help="Port for the WebSocket server (default: 8765)",
+    )
+    parser.add_argument(
+        "--raft-addr",
+        required=True,
+        help="This node's Raft address, e.g. localhost:9001",
+    )
+    parser.add_argument(
+        "--raft-peers",
+        required=True,
+        help="Comma-separated Raft addresses of the OTHER replicas, "
+             "e.g. localhost:9002,localhost:9003",
+    )
+    parser.add_argument(
+        "--journal",
+        required=True,
+        help="Path to pysyncobj binary journal file for this node",
+    )
+    parser.add_argument(
+        "--audit-log",
+        required=True,
+        help="Path to human-readable events.jsonl for this node",
+    )
+    return parser.parse_args()
+
+
 async def main() -> None:
-    server = TabletopServer()
-    await server.run("0.0.0.0", 8765)
+    args = parse_args()
+    partner_addrs = [p.strip() for p in args.raft_peers.split(",") if p.strip()]
+
+    server = TabletopServer(
+        self_addr=args.raft_addr,
+        partner_addrs=partner_addrs,
+        journal_file=args.journal,
+        audit_log_path=Path(args.audit_log),
+    )
+
+    await server.run(args.ws_host, args.ws_port)
 
 
 if __name__ == "__main__":
