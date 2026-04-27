@@ -34,6 +34,7 @@ class TabletopServer(SyncObj):
         self.event_history: list[Dict[str, Any]] = []
         self.audit_log_path = audit_log_path
         self._max_logged_seq = self._compute_max_logged_seq()
+        self.seq = self._max_logged_seq
 
         conf = SyncObjConf( journalFile=journal_file, dynamicMembershipChange=True)
         super().__init__(self_addr, partner_addrs, conf)
